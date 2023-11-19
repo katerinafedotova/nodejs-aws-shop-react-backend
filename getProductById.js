@@ -9,7 +9,7 @@ module.exports.getProductById = async (event) => {
     if (product) {
       return {
         statusCode: 200,
-        body: JSON.stringify({ product }),
+        body: JSON.stringify(product),
       };
     } else {
       return {
