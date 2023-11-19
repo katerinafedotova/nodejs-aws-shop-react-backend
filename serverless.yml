@@ -62,14 +62,18 @@ provider:
 
 functions:
   getProductsList:
-    handler: handler.getProductsList
-#    The following are a few example events you can configure
-#    NOTE: Please make sure to change your handler code to work with those events
-#    Check the event documentation for details
+    handler: getProductsList.getProductsList
     events:
      - httpApi:
           method: GET
           path: /products
+  getProductById:
+    handler: getProductById.getProductById
+    events:
+     - httpApi:
+          method: GET
+          path: /products/{productId}
+
 #      - websocket: $connect
 #      - s3: ${env:BUCKET}
 #      - schedule: rate(10 minutes)
