@@ -23,7 +23,12 @@ export class ProductsServiceStack extends Construct {
 
     const api = new apigateway.RestApi(this, "products-api", {
       restApiName: "Products Service",
-      description: "This service serves products."
+      description: "This service serves products.",
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,  // You can specify specific origins if needed
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ['*'],  // You can specify specific headers if needed
+      },
     });
 
     const getProductsIntegration = new apigateway.LambdaIntegration(handler, {
