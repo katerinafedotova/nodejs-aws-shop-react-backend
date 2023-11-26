@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { ProductsServiceStack } from '../lib/products-service-stack';
+import { ProductsServiceStack } from '../products-service-stack';
 
 class BackendStack extends cdk.Stack {
   constructor(parent: cdk.App, name: string) {
