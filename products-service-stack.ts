@@ -2,7 +2,6 @@ import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import * as s3 from "aws-cdk-lib/aws-s3";
 import {
   NodejsFunction,
   NodejsFunctionProps,
@@ -13,8 +12,6 @@ import { Table } from "aws-cdk-lib/aws-dynamodb";
 export class ProductsServiceStack extends Construct {
   constructor(scope: Construct, id: string) {
     super(scope, id);
-
-    // const bucket = new s3.Bucket(this, "ProductsStore");
 
     const productsTable = Table.fromTableName(
       this,
@@ -42,12 +39,22 @@ export class ProductsServiceStack extends Construct {
       entry: join(__dirname, "lambdas", "getProductsList.js"),
       ...nodeJsFunctionProps,
     });
+    const getOneLambda = new NodejsFunction(this, "getProductById", {
+      entry: join(__dirname, "lambdas", "getProductById.js"),
+      ...nodeJsFunctionProps,
+    });
 
     productsTable.grantReadWriteData(getAllLambda);
     stocksTable.grantReadWriteData(getAllLambda);
+    productsTable.grantReadWriteData(getOneLambda);
+    stocksTable.grantReadWriteData(getOneLambda);
 
     const getProductsIntegration = new apigateway.LambdaIntegration(
       getAllLambda
+    );
+
+    const getProductByIdIntegration = new apigateway.LambdaIntegration(
+      getOneLambda
     );
 
     const api = new apigateway.RestApi(this, "products-api", {
@@ -60,16 +67,10 @@ export class ProductsServiceStack extends Construct {
       },
     });
 
-    // const getProductsIntegration = new apigateway.LambdaIntegration(handler, {
-    //   requestTemplates: { "application/json": '{ "statusCode": "200" }' }
-    // });
-
-    // api.root.addMethod("GET", getProductsIntegration); // GET /
-
     const products = api.root.addResource("products");
     products.addMethod("GET", getProductsIntegration); // GET /products
 
-    // const product = products.addResource('{productId}');
-    // product.addMethod("GET", getProductsIntegration); // GET /products/productId
+    const productIdResource = products.addResource("{productId}");
+    productIdResource.addMethod("GET", getProductByIdIntegration); // GET /products/{productId}
   }
 }

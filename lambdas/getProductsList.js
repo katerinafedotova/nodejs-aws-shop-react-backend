@@ -2,20 +2,23 @@
 
 // asset-input/lambdas/getProductsList.js
 const AWS = require("aws-sdk");
-const productsTable = "AWS_Products";
+
+const PRODUCTS_TABLE = process.env.PRODUCTS_TABLE || '';
+const STOCKS_TABLE = process.env.STOCKS_TABLE || '';
+
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
 module.exports.handler = async (event) => {
   try {
     const params = {
-      TableName: productsTable
+      TableName: PRODUCTS_TABLE
     };
     const productsResult = await dynamoDB.scan(params).promise();
     const products = productsResult.Items;
-    
+
     // Perform DynamoDB query to get stocks
     const stocksParams = {
-      TableName: 'AWS_stocks',
+      TableName: STOCKS_TABLE,
     };
 
     const stocksResult = await dynamoDB.scan(stocksParams).promise();
@@ -33,8 +36,8 @@ module.exports.handler = async (event) => {
         price: product.price,
         count: stockEntry ? stockEntry.count : 0, // Assuming count is in the stocks table
       };
-    });   
-    
+    });
+
     return {
       statusCode: 200,
       body: JSON.stringify(productsList),
