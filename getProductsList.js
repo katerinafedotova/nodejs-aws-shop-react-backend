@@ -1,13 +1,23 @@
-'use strict';
+"use strict";
 
 const { productList } = require("./dummy-data/productList");
 
 module.exports.getProductsList = async (event) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify(productList)
-  };
+  try {
+    // Simulate an error for demonstration purposes
+    // Uncomment the line below to simulate an error
+    // throw new Error("Simulated error");
 
-  // Use this code if you don't use the http event with the LAMBDA-PROXY integration
-  // return { message: 'Go Serverless v1.0! Your function executed successfully!', event };
+    return {
+      statusCode: 200,
+      body: JSON.stringify(productList),
+    };
+  } catch (error) {
+    console.error("Error:", error);
+
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Internal Server Error" }),
+    };
+  }
 };
