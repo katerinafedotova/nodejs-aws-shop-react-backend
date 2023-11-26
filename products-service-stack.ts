@@ -3,7 +3,10 @@ import { Construct } from "constructs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
-import { NodejsFunction, NodejsFunctionProps } from "aws-cdk-lib/aws-lambda-nodejs";
+import {
+  NodejsFunction,
+  NodejsFunctionProps,
+} from "aws-cdk-lib/aws-lambda-nodejs";
 import { join } from "path";
 import { Table } from "aws-cdk-lib/aws-dynamodb";
 
@@ -13,38 +16,47 @@ export class ProductsServiceStack extends Construct {
 
     // const bucket = new s3.Bucket(this, "ProductsStore");
 
-    const productsTable = Table.fromTableName(this, 'AWS_Products', 'AWS_Products')
+    const productsTable = Table.fromTableName(
+      this,
+      "AWS_Products",
+      "AWS_Products"
+    );
+    const stocksTable = Table.fromTableName(this, "AWS_stocks", "AWS_stocks");
 
-    const nodeJsFunctionProps: NodejsFunctionProps= {
+    const nodeJsFunctionProps: NodejsFunctionProps = {
       bundling: {
         externalModules: [
-          'aws-sdk', // Use the 'aws-sdk' available in the Lambda runtime
+          "aws-sdk", // Use the 'aws-sdk' available in the Lambda runtime
         ],
       },
-      depsLockFilePath: join(__dirname, '/', 'package-lock.json'),
+      depsLockFilePath: join(__dirname, "/", "package-lock.json"),
       environment: {
-        PRIMARY_KEY: 'itemId',
-        TABLE_NAME: productsTable.tableName,
+        PRIMARY_KEY: "itemId",
+        PRODUCTS_TABLE: productsTable.tableName,
+        STOCKS_TABLE: stocksTable.tableName,
       },
       runtime: lambda.Runtime.NODEJS_16_X,
-    }
+    };
 
-    const getAllLambda = new NodejsFunction(this, 'getProductsList', {
-      entry: join(__dirname, 'lambdas', 'getProductsList.js'),
+    const getAllLambda = new NodejsFunction(this, "getProductsList", {
+      entry: join(__dirname, "lambdas", "getProductsList.js"),
       ...nodeJsFunctionProps,
     });
 
     productsTable.grantReadWriteData(getAllLambda);
+    stocksTable.grantReadWriteData(getAllLambda);
 
-    const getProductsIntegration = new apigateway.LambdaIntegration(getAllLambda);
+    const getProductsIntegration = new apigateway.LambdaIntegration(
+      getAllLambda
+    );
 
     const api = new apigateway.RestApi(this, "products-api", {
       restApiName: "Products Service",
       description: "This service serves products.",
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,  // You can specify specific origins if needed
+        allowOrigins: apigateway.Cors.ALL_ORIGINS, // You can specify specific origins if needed
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: ['*'],  // You can specify specific headers if needed
+        allowHeaders: ["*"], // You can specify specific headers if needed
       },
     });
 
@@ -56,9 +68,8 @@ export class ProductsServiceStack extends Construct {
 
     const products = api.root.addResource("products");
     products.addMethod("GET", getProductsIntegration); // GET /products
-    
+
     // const product = products.addResource('{productId}');
     // product.addMethod("GET", getProductsIntegration); // GET /products/productId
-
   }
 }
