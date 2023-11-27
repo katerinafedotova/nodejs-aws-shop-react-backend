@@ -13,7 +13,11 @@ exports.handler = async (event) => {
         if (!title || !price || !description) {
             return {
                 statusCode: 400,
-                body: JSON.stringify({ message: "Missing required fields" })
+                body: JSON.stringify({ message: "Missing required fields" }),
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Credentials": true
+                }
             };
         }
         const id = Date.now().toString();
@@ -43,14 +47,22 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 201,
-            body: JSON.stringify({ message: "Product created successfully", product: productCreated })
+            body: JSON.stringify({ message: "Product created successfully", product: productCreated }),
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": true
+            }
         };
     } catch (error) {
         console.error("Error:", error);
 
         return {
             statusCode: 500,
-            body: JSON.stringify({ message: "Internal server error" })
+            body: JSON.stringify({ message: "Internal server error" }),
+            headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": true
+            }
         };
     }
 };
