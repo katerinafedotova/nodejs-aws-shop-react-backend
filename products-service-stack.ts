@@ -43,11 +43,17 @@ export class ProductsServiceStack extends Construct {
       entry: join(__dirname, "lambdas", "getProductById.js"),
       ...nodeJsFunctionProps,
     });
+    const createLambda = new NodejsFunction(this, "createProduct", {
+      entry: join(__dirname, "lambdas", "createProduct.js"),
+      ...nodeJsFunctionProps,
+    });
 
     productsTable.grantReadWriteData(getAllLambda);
     stocksTable.grantReadWriteData(getAllLambda);
     productsTable.grantReadWriteData(getOneLambda);
     stocksTable.grantReadWriteData(getOneLambda);
+    productsTable.grantReadWriteData(createLambda);
+    stocksTable.grantReadWriteData(createLambda);
 
     const getProductsIntegration = new apigateway.LambdaIntegration(
       getAllLambda
@@ -55,6 +61,10 @@ export class ProductsServiceStack extends Construct {
 
     const getProductByIdIntegration = new apigateway.LambdaIntegration(
       getOneLambda
+    );
+
+    const createProductIntegration = new apigateway.LambdaIntegration(
+      createLambda
     );
 
     const api = new apigateway.RestApi(this, "products-api", {
@@ -67,8 +77,26 @@ export class ProductsServiceStack extends Construct {
       },
     });
 
+    const requestModel = api.addModel("RequestModel", {
+      contentType: "application/json",
+      modelName: "RequestModel",
+      schema: {
+        type: apigateway.JsonSchemaType.OBJECT,
+        properties: {
+          title: { type: apigateway.JsonSchemaType.STRING },
+          description: { type: apigateway.JsonSchemaType.STRING },
+          price: { type: apigateway.JsonSchemaType.NUMBER },
+          count: { type: apigateway.JsonSchemaType.NUMBER },
+        },
+        required: ["title", "description", "price", "count"],
+      },
+    });
+
     const products = api.root.addResource("products");
     products.addMethod("GET", getProductsIntegration); // GET /products
+    products.addMethod("POST", createProductIntegration, {
+      requestModels: { "application/json": requestModel },
+    }); // POST /products
 
     const productIdResource = products.addResource("{productId}");
     productIdResource.addMethod("GET", getProductByIdIntegration); // GET /products/{productId}
