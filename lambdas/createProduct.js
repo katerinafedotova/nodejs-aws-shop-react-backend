@@ -7,7 +7,8 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
 exports.handler = async (event) => {
     try {
-        const requestBody = event.body;
+        const requestBody = JSON.parse(event.body);
+
         const { title, price, description, count } = requestBody;
         if (!title || !price || !description) {
             return {
