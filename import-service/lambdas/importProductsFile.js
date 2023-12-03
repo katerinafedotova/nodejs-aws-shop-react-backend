@@ -1,17 +1,18 @@
 const AWS = require('aws-sdk');
+const s3 = new AWS.S3();
 
 exports.handler = async function (event) {
+    const bucketName = process.env.BUCKET_NAME;
+
+    if (!bucketName) {
+        throw new Error('Bucket name is not configured.');
+    }
+    
     try {
-        const s3 = new AWS.S3();
-        const bucketName = process.env.BUCKET_NAME || '';
         const fileName = event.queryStringParameters?.name || '';
-        
+
         // Generate a signed URL
-        const signedUrl = await s3.getSignedUrlPromise('putObject', {
-            Bucket: bucketName,
-            Key: `uploaded/${fileName}`,
-            Expires: 60, // URL expires in 60 seconds
-        });
+        const signedUrl = await getSignedUrl(s3, bucketName, fileName);
 
         return {
             statusCode: 200,
@@ -34,4 +35,15 @@ exports.handler = async function (event) {
             body: JSON.stringify({ error: 'Internal Server Error' }),
         };
     }
+}
+
+async function getSignedUrl(s3, bucketName, fileName) {
+    // Generate a signed URL
+    const signedUrl = await s3.getSignedUrlPromise('putObject', {
+        Bucket: bucketName,
+        Key: `uploaded/${fileName}`,
+        Expires: 60, // URL expires in 60 seconds
+    });
+
+    return signedUrl;
 }
