@@ -1,8 +1,8 @@
 // The following code uses the AWS SDK for JavaScript (v3).
 // For more information, see https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/index.html.
 
-const { getProductById } = require("./lambdas/getProductById");
-const { getProductsList } = require("./lambdas/getProductsList");
+const { getProductById } = require("../lambdas/getProductById");
+const { getProductsList } = require("../lambdas/getProductsList");
 
 /**
  * @param {string} bucketName
