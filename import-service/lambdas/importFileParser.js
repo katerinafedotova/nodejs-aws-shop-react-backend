@@ -2,6 +2,8 @@ const AWS = require('aws-sdk');
 const csv = require('csv-parser');
 
 exports.handler = async (event) => {
+  const queueUrl = process.env.SQS_QUEUE_URL;
+
   // Ensure the event is an S3 event
   if (!event.Records || event.Records.length === 0) {
     console.log('No S3 records found.');
@@ -31,7 +33,11 @@ exports.handler = async (event) => {
     // Parse CSV using csv-parser
     s3ObjectStream
       .pipe(csv())
-      .on('data', (data) => {
+      .on('data', async (data) => {
+        await sqs.sendMessage({
+          QueueUrl: queueUrl,
+          MessageBody: JSON.stringify(data),
+        }).promise();
         // Log each record
         console.log('Parsed record:', data);
       })
