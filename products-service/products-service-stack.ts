@@ -8,11 +8,16 @@ import {
 } from "aws-cdk-lib/aws-lambda-nodejs";
 import { join } from "path";
 import { Table } from "aws-cdk-lib/aws-dynamodb";
+import { Queue } from "aws-cdk-lib/aws-sqs";
+import { Duration } from "aws-cdk-lib";
+import { PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 
 export class ProductsServiceStack extends Construct {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
+    // get products and stock tables
     const productsTable = Table.fromTableName(
       this,
       "AWS_Products",
@@ -20,10 +25,11 @@ export class ProductsServiceStack extends Construct {
     );
     const stocksTable = Table.fromTableName(this, "AWS_stocks", "AWS_stocks");
 
+    // set default nodeJsFunctionProps
     const nodeJsFunctionProps: NodejsFunctionProps = {
       bundling: {
         externalModules: [
-          "aws-sdk", // Use the 'aws-sdk' available in the Lambda runtime
+          "aws-sdk",
         ],
       },
       depsLockFilePath: join(__dirname, "/", "package-lock.json"),
@@ -35,6 +41,7 @@ export class ProductsServiceStack extends Construct {
       runtime: lambda.Runtime.NODEJS_16_X,
     };
 
+    // create lambdas
     const getAllLambda = new NodejsFunction(this, "getProductsList", {
       entry: join(__dirname, "lambdas", "getProductsList.js"),
       ...nodeJsFunctionProps,
@@ -48,6 +55,7 @@ export class ProductsServiceStack extends Construct {
       ...nodeJsFunctionProps,
     });
 
+    // grant access to tables
     productsTable.grantReadWriteData(getAllLambda);
     stocksTable.grantReadWriteData(getAllLambda);
     productsTable.grantReadWriteData(getOneLambda);
@@ -55,6 +63,7 @@ export class ProductsServiceStack extends Construct {
     productsTable.grantReadWriteData(createLambda);
     stocksTable.grantReadWriteData(createLambda);
 
+    // set api gateway
     const getProductsIntegration = new apigateway.LambdaIntegration(
       getAllLambda
     );
@@ -92,6 +101,7 @@ export class ProductsServiceStack extends Construct {
       },
     });
 
+    // set endpoints
     const products = api.root.addResource("products");
     products.addMethod("GET", getProductsIntegration); // GET /products
     products.addMethod("POST", createProductIntegration, {
@@ -100,5 +110,41 @@ export class ProductsServiceStack extends Construct {
 
     const productIdResource = products.addResource("{productId}");
     productIdResource.addMethod("GET", getProductByIdIntegration); // GET /products/{productId}
+
+    // Create an SQS queue
+    const catalogItemsQueue = new Queue(this, 'CatalogItemsQueue', {
+      visibilityTimeout: Duration.seconds(300),
+    });
+
+    // Create a Lambda function
+    const catalogBatchProcessLambda = new NodejsFunction(this, 'CatalogBatchProcess', {
+      entry: join(__dirname, "lambdas", "catalogBatchProcess.js"),
+      ...nodeJsFunctionProps,
+    });
+
+    // Grant the Lambda function permissions to access DynamoDB, SQS, and SNS
+    catalogBatchProcessLambda.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['dynamodb:PutItem'],
+        resources: [
+          'arn:aws:dynamodb:REGION:ACCOUNT_ID:table/your-products-table-name',
+        ],
+      })
+    );
+
+    catalogBatchProcessLambda.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['sqs:SendMessage'],
+        resources: [catalogItemsQueue.queueArn],
+      })
+    );
+
+    // Set up the SQS trigger for the Lambda function
+    catalogBatchProcessLambda.addEventSource(
+      new SqsEventSource(catalogItemsQueue, {
+        batchSize: 5,
+      })
+    );
   }
+
 }
