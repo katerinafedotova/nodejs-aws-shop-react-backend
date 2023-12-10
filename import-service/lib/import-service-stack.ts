@@ -1,0 +1,102 @@
+import * as cdk from "aws-cdk-lib";
+import { Construct } from "constructs";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as events from "aws-cdk-lib/aws-events";
+import * as targets from "aws-cdk-lib/aws-events-targets";
+
+export class ImportServiceStack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    // Reference an existing S3 bucket by name or ARN
+    const s3BucketName = "import-files-storage";
+
+    const bucket = s3.Bucket.fromBucketName(this, "FilesStorage", s3BucketName);
+
+    const importProductsFileLambda = new lambda.Function(
+      this,
+      "ImportProductsFileLambda",
+      {
+        runtime: lambda.Runtime.NODEJS_16_X,
+        handler: "importProductsFile.handler",
+        code: lambda.Code.fromAsset("lambdas"),
+        environment: {
+          BUCKET_NAME: s3BucketName,
+        },
+      }
+    );
+
+    // Grant Lambda permissions to interact with S3
+    bucket.grantReadWrite(importProductsFileLambda);
+
+    // Define Lambda function for S3 event
+    const importFileParserLambda = new lambda.Function(
+      this,
+      "ImportFileParserLambda",
+      {
+        runtime: lambda.Runtime.NODEJS_16_X,
+        handler: "importFileParser.handler",
+        code: lambda.Code.fromAsset("lambdas"),
+        environment: {
+          BUCKET_NAME: s3BucketName,
+        },
+      }
+    );
+
+    // Grant Lambda permissions to interact with S3
+    bucket.grantRead(importFileParserLambda);
+
+    // Define S3 event rule for ObjectCreated event in "uploaded" folder
+    const eventRule = new events.Rule(this, "ImportFileCreatedRule", {
+      eventPattern: {
+        source: ["aws.s3"],
+        detail: {
+          eventName: ["PutObject"],
+        },
+        resources: [bucket.bucketArn],
+      },
+    });
+
+    // Add filter to the rule to trigger only for changes in the 'uploaded' folder
+    eventRule.addEventPattern({
+      detail: {
+        requestParameters: {
+          key: ["uploaded/*"],
+        },
+      },
+    });
+
+    // Add Lambda function as the target for the S3 event
+    eventRule.addTarget(new targets.LambdaFunction(importFileParserLambda));
+
+    // Define API Gateway
+    const api = new apigateway.RestApi(this, "import-service-api", {
+      restApiName: "Import Service",
+      description: "This service imports products.",
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ["*"],
+      },
+    });
+
+    // Define Lambda Integration
+    const importProductsIntegration = new apigateway.LambdaIntegration(
+      importProductsFileLambda
+    );
+
+    // Create /import Resource
+    const importResource = api.root.addResource("import");
+
+    // Create /import GET Method
+    importResource.addMethod("GET", importProductsIntegration);
+
+    // Output the API Gateway endpoint URL
+    new cdk.CfnOutput(this, "ImportServiceApiUrl", {
+      value: api.url,
+    });
+  }
+}
