@@ -127,7 +127,8 @@ export class ProductsServiceStack extends Construct {
       new PolicyStatement({
         actions: ['dynamodb:PutItem'],
         resources: [
-          'arn:aws:dynamodb:REGION:ACCOUNT_ID:table/your-products-table-name',
+          'arn:aws:dynamodb:eu-central-1:073384432771:table/AWS_Products',
+          'arn:aws:dynamodb:eu-central-1:073384432771:table/AWS_stocks',
         ],
       })
     );
