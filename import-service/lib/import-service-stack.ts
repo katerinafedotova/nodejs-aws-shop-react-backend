@@ -8,6 +8,7 @@ import * as events from "aws-cdk-lib/aws-events";
 import * as targets from "aws-cdk-lib/aws-events-targets";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { S3EventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 
 export class ImportServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -60,28 +61,12 @@ export class ImportServiceStack extends cdk.Stack {
       })
     );
 
-    // Define S3 event rule for ObjectCreated event in "uploaded" folder
-    const eventRule = new events.Rule(this, "ImportFileCreatedRule", {
-      eventPattern: {
-        source: ["aws.s3"],
-        detail: {
-          eventName: ["PutObject"],
-        },
-        resources: [bucket.bucketArn],
-      },
-    });
-
-    // Add filter to the rule to trigger only for changes in the 'uploaded' folder
-    eventRule.addEventPattern({
-      detail: {
-        requestParameters: {
-          key: ["uploaded/*"],
-        },
-      },
-    });
-
-    // Add Lambda function as the target for the S3 event
-    eventRule.addTarget(new targets.LambdaFunction(importFileParserLambda));
+    importFileParserLambda.addEventSource(
+      new S3EventSource(bucket as s3.Bucket, {
+        events: [s3.EventType.OBJECT_CREATED],
+        filters: [{ prefix: "uploaded/", suffix: ".csv" }],
+      })
+    );
 
     // Define API Gateway
     const api = new apigateway.RestApi(this, "import-service-api", {
