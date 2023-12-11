@@ -12,6 +12,8 @@ import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Duration } from "aws-cdk-lib";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as snsSubscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 
 export class ProductsServiceStack extends Construct {
   constructor(scope: Construct, id: string) {
@@ -116,11 +118,26 @@ export class ProductsServiceStack extends Construct {
       visibilityTimeout: Duration.seconds(300),
     });
 
+    // Create an SNS topic
+    const createProductTopic = new sns.Topic(this, 'CreateProductTopic', {
+      displayName: 'Create Product Topic',
+    });
+
+    // Create an email subscription
+    createProductTopic.addSubscription(
+      new snsSubscriptions.EmailSubscription('fedotova490@gmail.com')
+    );
+
     // Create a Lambda function
     const catalogBatchProcessLambda = new NodejsFunction(this, 'CatalogBatchProcess', {
       entry: join(__dirname, "lambdas", "catalogBatchProcess.js"),
       ...nodeJsFunctionProps,
+      environment: {
+        SNS_TOPIC_ARN: createProductTopic.topicArn
+      }
     });
+
+    createProductTopic.grantPublish(catalogBatchProcessLambda)
 
     // Grant the Lambda function permissions to access DynamoDB, SQS, and SNS
     catalogBatchProcessLambda.addToRolePolicy(
