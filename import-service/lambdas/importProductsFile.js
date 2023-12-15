@@ -7,7 +7,7 @@ exports.handler = async function (event) {
     if (!bucketName) {
         throw new Error('Bucket name is not configured.');
     }
-    
+
     try {
         const fileName = event.queryStringParameters?.name || '';
 
@@ -18,8 +18,9 @@ exports.handler = async function (event) {
             statusCode: 200,
             headers: {
                 "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "OPTIONS, GET, PUT",
+                "Access-Control-Allow-Headers": "Content-Type",
                 "Access-Control-Allow-Credentials": true,
-                'Access-Control-Allow-Methods': 'GET',
             },
             body: JSON.stringify(signedUrl),
         };
@@ -29,8 +30,9 @@ exports.handler = async function (event) {
             statusCode: 500,
             headers: {
                 "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "OPTIONS, GET, PUT",
+                "Access-Control-Allow-Headers": "Content-Type",
                 "Access-Control-Allow-Credentials": true,
-                'Access-Control-Allow-Methods': 'GET',
             },
             body: JSON.stringify({ error: 'Internal Server Error' }),
         };
